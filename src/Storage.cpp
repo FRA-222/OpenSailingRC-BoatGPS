@@ -1,8 +1,41 @@
 /**
  * @file Storage.cpp
- * @brief SD card JSON storage implementation
- * @author OpenSailingRC
+ * @brief Implémentation du stockage JSON sur carte SD
+ * @author OpenSailingRC Contributors
  * @date 2025
+ * @version 1.0.3
+ * 
+ * @copyright Copyright (c) 2025 OpenSailingRC
+ * @license GNU General Public License v3.0
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * 
+ * @details
+ * Gère l'enregistrement des données GPS sur carte SD au format JSON.
+ * Les fichiers sont compatibles avec le système de replay du Display.
+ * Chaque ligne du fichier contient un objet JSON avec timestamp,
+ * type de message, et données du bateau.
+ * 
+ * Format JSON:
+ * {"timestamp":1234567890,"type":1,"name":"AA:BB:CC:DD:EE:FF",
+ *  "boatId":255,"sequenceNumber":42,"gpsTimestamp":1234567890,
+ *  "latitude":43.123456,"longitude":2.654321,"speed":4.5,
+ *  "heading":285.0,"satellites":8}
+ * 
+ * Rotation automatique des fichiers:
+ * - Nouveau fichier toutes les MAX_RECORDS (1000 par défaut)
+ * - Ou toutes les MAX_FILE_SIZE octets (1 MB par défaut)
  */
 
 #include "Storage.h"
@@ -22,6 +55,25 @@ Storage::Storage()
     : sdAvailable(false), fileCreated(false), currentFileSize(0), recordCount(0) {
 }
 
+/**
+ * @brief Initialise le stockage sur carte SD
+ * @param enableSD Active l'écriture sur SD (false = désactivé)
+ * @return true si initialisé avec succès ou SD désactivé
+ * 
+ * @details
+ * Configure le SPI et monte la carte SD si enableSD=true.
+ * Si la carte SD n'est pas disponible, retourne true quand même
+ * (le système continue sans enregistrement).
+ * 
+ * Configuration SPI pour Atom GPS Base:
+ * - SCK  : GPIO23
+ * - MISO : GPIO33
+ * - MOSI : GPIO19
+ * - CS   : GPIO5
+ * - Fréquence : 40 MHz
+ * 
+ * Note: L'AtomS3 Lite n'a pas de slot SD, enableSD doit être false.
+ */
 bool Storage::begin(bool enableSD) {
     Logger::info("Storage: Initializing...");
     
@@ -56,7 +108,7 @@ bool Storage::begin(bool enableSD) {
     return true;
 }
 
-void Storage::writeGPSData(const GPSData& data, const uint8_t* macAddress) {
+void Storage::writeGPSData(const GPSData& data, const uint8_t* macAddress, uint32_t sequenceNumber) {
     if (!sdAvailable) {
         return;
     }
@@ -89,6 +141,7 @@ void Storage::writeGPSData(const GPSData& data, const uint8_t* macAddress) {
     // Boat data nested object
     JsonObject boat = doc["boat"].to<JsonObject>();
     boat["messageType"] = MESSAGE_TYPE;
+    boat["sequenceNumber"] = sequenceNumber;  // Add sequence number for packet loss tracking
     boat["gpsTimestamp"] = data.timestamp;
     boat["latitude"] = data.latitude;
     boat["longitude"] = data.longitude;

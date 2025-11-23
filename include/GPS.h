@@ -1,11 +1,36 @@
 /**
  * @file GPS.h
- * @brief GPS data acquisition and validation
- * @author OpenSailingRC
+ * @brief Acquisition et validation des données GPS
+ * @author OpenSailingRC Contributors
  * @date 2025
+ * @version 1.0.3
  * 
- * This class handles GPS module communication, NMEA parsing,
- * and data validation for the boat GPS tracker.
+ * @copyright Copyright (c) 2025 OpenSailingRC
+ * @license GNU General Public License v3.0
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * 
+ * @details
+ * Cette classe gère la communication avec le module GPS, le parsing
+ * des trames NMEA via TinyGPS++, et la validation des données pour
+ * le tracker GPS embarqué sur voilier RC.
+ * 
+ * Fonctionnalités:
+ * - Support multi-modules (AT6668 / NEO-6M)
+ * - Parsing NMEA automatique
+ * - Validation du fix (≥4 satellites)
+ * - Conversion en timestamp Unix
  */
 
 #ifndef GPS_H
@@ -88,7 +113,15 @@ private:
     uint8_t txPin;
     GPSData currentData;
     
-    static const uint32_t GPS_BAUD = 9600;
+    // Baudrate depends on GPS module:
+    // - Original GPS (NEO-6M): 9600 bps
+    // - GPS Atom v2 (AT6668): 115200 bps
+    #ifdef CONFIG_IDF_TARGET_ESP32S3
+        static const uint32_t GPS_BAUD = 115200;  // AT6668 on AtomS3
+    #else
+        static const uint32_t GPS_BAUD = 9600;    // NEO-6M on Atom Lite
+    #endif
+    
     static const uint32_t MAX_AGE_MS = 2000;  ///< Maximum age for valid fix
 };
 

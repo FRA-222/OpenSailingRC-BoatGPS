@@ -1,8 +1,41 @@
 /**
  * @file Storage.h
- * @brief SD card JSON storage for GPS data
- * @author OpenSailingRC
+ * @brief Stockage JSON sur carte SD pour données GPS
+ * @author OpenSailingRC Contributors
  * @date 2025
+ * @version 1.0.3
+ * 
+ * @copyright Copyright (c) 2025 OpenSailingRC
+ * @license GNU General Public License v3.0
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * 
+ * @details
+ * Gère l'enregistrement persistant des données GPS sur carte SD.
+ * Les fichiers JSON générés sont compatibles avec le système de
+ * replay du Display pour analyse post-navigation.
+ * 
+ * Configuration SD:
+ * - Format: FAT32 recommandé
+ * - Pins: SCK=23, MISO=33, MOSI=19, CS=5 (Atom GPS Base)
+ * - Vitesse SPI: 40 MHz
+ * 
+ * Fonctionnalités:
+ * - Écriture JSON ligne par ligne (streaming)
+ * - Rotation automatique des fichiers
+ * - Numérotation séquentielle (gps_001.json, gps_002.json...)
+ * - Gestion gracieuse des erreurs (continue sans SD si absent)
  */
 
 #ifndef STORAGE_H
@@ -39,8 +72,9 @@ public:
      * @brief Write GPS data to SD card in JSON format
      * @param data GPS data structure
      * @param macAddress MAC address of the GPS device (6 bytes)
+     * @param sequenceNumber Sequence number for packet loss detection (default: 0)
      */
-    void writeGPSData(const GPSData& data, const uint8_t* macAddress);
+    void writeGPSData(const GPSData& data, const uint8_t* macAddress, uint32_t sequenceNumber = 0);
     
     /**
      * @brief Check if SD card is available
