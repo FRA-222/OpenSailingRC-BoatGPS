@@ -130,17 +130,15 @@ bool Communication::begin() {
  * 
  * Structure du paquet (alignée avec struct_message_Boat du Display):
  * - messageType : 1 (identifie les données bateau)
- * - name : Adresse MAC formatée ("AA:BB:CC:DD:EE:FF")
- * - boatId : Dernier octet de l'adresse MAC
+ * - name : Nom personnalisé du bateau ou adresse MAC ("BOAT1" ou "AA:BB:CC:DD:EE:FF")
  * - sequenceNumber : Compteur incrémental (détection perte)
  * - gpsTimestamp : Timestamp GPS (epoch Unix)
  * - latitude, longitude : Position en degrés
  * - speed : Vitesse en nœuds
  * - heading : Cap en degrés (0=Nord)
  * - satellites : Nombre de satellites
- * - timestamp : 0 (rempli par Display à réception)
  */
-bool Communication::broadcastGPSData(const GPSData& data, uint8_t retries) {
+bool Communication::broadcastGPSData(const GPSData& data, const String& boatName, uint8_t retries) {
     // Increment sequence counter
     sequenceCounter++;
     
@@ -148,11 +146,9 @@ bool Communication::broadcastGPSData(const GPSData& data, uint8_t retries) {
     GPSBroadcastPacket packet;
     packet.messageType = 1;           // 1 = Boat GPS data
     
-    // Format MAC address as string
-    snprintf(packet.name, sizeof(packet.name), "%02X:%02X:%02X:%02X:%02X:%02X",
-             localMAC[0], localMAC[1], localMAC[2],
-             localMAC[3], localMAC[4], localMAC[5]);
-    packet.boatId = (localMAC[5]);   // Simple boat ID from last byte of MAC
+    // Use custom boat name or MAC address
+    strncpy(packet.name, boatName.c_str(), sizeof(packet.name) - 1);
+    packet.name[sizeof(packet.name) - 1] = '\0'; // Ensure null termination
     packet.sequenceNumber = sequenceCounter;  // Add sequence number for packet loss detection
     packet.gpsTimestamp = data.timestamp;
     packet.latitude = data.latitude;
@@ -160,7 +156,6 @@ bool Communication::broadcastGPSData(const GPSData& data, uint8_t retries) {
     packet.speed = data.speed;
     packet.heading = data.course;
     packet.satellites = data.satellites;
-    packet.timestamp = 0;  // Not used - Display will set it upon reception
     
     // Broadcast address
     uint8_t broadcastAddr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};

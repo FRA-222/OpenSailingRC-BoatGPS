@@ -46,8 +46,7 @@
  */
 struct GPSBroadcastPacket {
     int8_t messageType;      ///< 1 = Boat, 2 = Anemometer
-     char name[18];     // MAC address as string (format: "AA:BB:CC:DD:EE:FF")
-    int boatId;          // Numeric boat ID
+     char name[18];     // Custom boat name or MAC address (max 17 chars + null terminator)
     uint32_t sequenceNumber; ///< Sequence number (incremental counter for packet loss detection)
     uint32_t gpsTimestamp;   ///< GPS timestamp in milliseconds
     float latitude;          ///< Latitude in degrees
@@ -55,7 +54,6 @@ struct GPSBroadcastPacket {
     float speed;             ///< Speed in knots
     float heading;           ///< Heading in degrees (0=N, 90=E, 180=S, 270=W)
     uint8_t satellites;      ///< Number of visible satellites
-    unsigned long timestamp; ///< Timestamp of measurement (set to 0 - Display will fill on reception)
 };
 
 
@@ -94,10 +92,11 @@ public:
      *              un petit paquet de confirmation)
      * 
      * @param data GPS data to broadcast
+     * @param boatName Custom boat name or MAC address
      * @param retries Number of retry attempts if send fails (default: 2)
      * @return true if at least one broadcast attempt succeeded (transmission layer only)
      */
-    bool broadcastGPSData(const GPSData& data, uint8_t retries = 2);
+    bool broadcastGPSData(const GPSData& data, const String& boatName, uint8_t retries = 2);
 
     /**
      * @brief Get local MAC address

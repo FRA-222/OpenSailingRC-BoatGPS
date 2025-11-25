@@ -1,6 +1,6 @@
 /**
  * @file Storage.cpp
- * @brief Implémentation du stockage JSON sur carte SD
+ * @brief SD card JSON storage implementation
  * @author OpenSailingRC Contributors
  * @date 2025
  * @version 1.0.3
@@ -22,20 +22,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  * 
  * @details
- * Gère l'enregistrement des données GPS sur carte SD au format JSON.
- * Les fichiers sont compatibles avec le système de replay du Display.
- * Chaque ligne du fichier contient un objet JSON avec timestamp,
- * type de message, et données du bateau.
+ * Manages GPS data recording to SD card in JSON format.
+ * Files are compatible with the Display replay system.
+ * Each line in the file contains one JSON object with timestamp,
+ * message type, and boat data.
  * 
- * Format JSON:
+ * JSON format:
  * {"timestamp":1234567890,"type":1,"name":"AA:BB:CC:DD:EE:FF",
- *  "boatId":255,"sequenceNumber":42,"gpsTimestamp":1234567890,
+ *  "sequenceNumber":42,"gpsTimestamp":1234567890,
  *  "latitude":43.123456,"longitude":2.654321,"speed":4.5,
  *  "heading":285.0,"satellites":8}
  * 
- * Rotation automatique des fichiers:
- * - Nouveau fichier toutes les MAX_RECORDS (1000 par défaut)
- * - Ou toutes les MAX_FILE_SIZE octets (1 MB par défaut)
+ * Automatic file rotation:
+ * - New file every MAX_RECORDS (1000 by default)
+ * - Or every MAX_FILE_SIZE bytes (1 MB by default)
  */
 
 #include "Storage.h"
@@ -51,28 +51,35 @@
 const char* Storage::FILE_PREFIX = "/gps_";
 const char* Storage::FILE_EXTENSION = ".json";
 
+/**
+ * @brief Constructor for Storage class
+ * 
+ * @details
+ * Initializes all member variables to their default state.
+ * SD card must be initialized by calling begin() before use.
+ */
 Storage::Storage() 
     : sdAvailable(false), fileCreated(false), currentFileSize(0), recordCount(0) {
 }
 
 /**
- * @brief Initialise le stockage sur carte SD
- * @param enableSD Active l'écriture sur SD (false = désactivé)
- * @return true si initialisé avec succès ou SD désactivé
+ * @brief Initialize SD card storage
+ * @param enableSD Enable SD card writing (false = disabled)
+ * @return true if successfully initialized or SD disabled
  * 
  * @details
- * Configure le SPI et monte la carte SD si enableSD=true.
- * Si la carte SD n'est pas disponible, retourne true quand même
- * (le système continue sans enregistrement).
+ * Configures SPI and mounts SD card if enableSD=true.
+ * If SD card is not available, returns true anyway
+ * (system continues without recording).
  * 
- * Configuration SPI pour Atom GPS Base:
+ * SPI configuration for Atom GPS Base:
  * - SCK  : GPIO23
  * - MISO : GPIO33
  * - MOSI : GPIO19
  * - CS   : GPIO5
- * - Fréquence : 40 MHz
+ * - Frequency : 40 MHz
  * 
- * Note: L'AtomS3 Lite n'a pas de slot SD, enableSD doit être false.
+ * Note: AtomS3 Lite has no SD slot, enableSD must be false.
  */
 bool Storage::begin(bool enableSD) {
     Logger::info("Storage: Initializing...");
@@ -108,6 +115,20 @@ bool Storage::begin(bool enableSD) {
     return true;
 }
 
+/**
+ * @brief Write GPS data to SD card in JSON format
+ * @param data GPS data structure to record
+ * @param macAddress Device MAC address (6 bytes)
+ * @param sequenceNumber Packet sequence number for tracking
+ * 
+ * @details
+ * Records GPS data as one JSON object per line.
+ * Creates log file on first valid GPS fix.
+ * Automatically rotates files when MAX_FILE_SIZE or MAX_RECORDS_PER_FILE is reached.
+ * 
+ * Filename format: /gps_MACADDRESS_YYYY-MM-DD_HH-MM-SS.json
+ * Example: /gps_D0CF130FD9DC_2025-11-25_14-30-00.json
+ */
 void Storage::writeGPSData(const GPSData& data, const uint8_t* macAddress, uint32_t sequenceNumber) {
     if (!sdAvailable) {
         return;
@@ -158,10 +179,18 @@ void Storage::writeGPSData(const GPSData& data, const uint8_t* macAddress, uint3
     recordCount++;
 }
 
+/**
+ * @brief Check if SD card storage is available
+ * @return true if SD card is mounted and working
+ */
 bool Storage::isAvailable() {
     return sdAvailable;
 }
 
+/**
+ * @brief Get current log filename
+ * @return Current filename or status message if file not yet created
+ */
 String Storage::getCurrentFileName() {
     if (!fileCreated) {
         return "Waiting for GPS fix...";
@@ -169,6 +198,13 @@ String Storage::getCurrentFileName() {
     return currentFileName;
 }
 
+/**
+ * @brief Close current log file
+ * 
+ * @details
+ * Safely closes the current log file and logs statistics
+ * (record count and file size).
+ */
 void Storage::closeFile() {
     if (logFile) {
         logFile.close();
@@ -178,10 +214,32 @@ void Storage::closeFile() {
     }
 }
 
+/**
+ * @brief Check if file rotation is needed
+ * @return true if file size or record count exceeds limits
+ * 
+ * @details
+ * File rotation triggers when either:
+ * - File size >= MAX_FILE_SIZE (1 MB)
+ * - Record count >= MAX_RECORDS_PER_FILE (1000)
+ */
 bool Storage::needsRotation() {
     return (currentFileSize >= MAX_FILE_SIZE) || (recordCount >= MAX_RECORDS_PER_FILE);
 }
 
+/**
+ * @brief Create new log file with timestamp-based filename
+ * @param macAddress Device MAC address for filename
+ * @param data GPS data containing timestamp for filename
+ * @return true if file created successfully
+ * 
+ * @details
+ * Generates filename from MAC address and GPS timestamp.
+ * Format: /gps_MACADDRESS_YYYY-MM-DD_HH-MM-SS.json
+ * If file exists, appends suffix (_1, _2, etc.)
+ * 
+ * Closes any previously open file before creating new one.
+ */
 bool Storage::createLogFile(const uint8_t* macAddress, const GPSData& data) {
     // Close previous file if open
     if (logFile) {
@@ -229,6 +287,15 @@ bool Storage::createLogFile(const uint8_t* macAddress, const GPSData& data) {
     return true;
 }
 
+/**
+ * @brief Rotate to new log file
+ * @param data GPS data for new filename timestamp
+ * 
+ * @details
+ * Closes current file and creates new one with updated timestamp.
+ * Called automatically when file size or record count limits are reached.
+ * Preserves MAC address from previous file.
+ */
 void Storage::rotateFile(const GPSData& data) {
     Logger::info("🔄 Rotating storage file...");
     closeFile();

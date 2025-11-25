@@ -1,0 +1,20 @@
+{
+  "name": "OpenSailingRC-BoatGPS",
+  "version": "1.0.4",
+  "description": "GPS tracker for RC sailboats with ESP-NOW broadcast",
+  "author": "OpenSailingRC Contributors",
+  "license": "GPL-3.0",
+  "platform": "ESP32-S3",
+  "board": "M5Stack AtomS3",
+  "preferences": [
+    {
+      "key": "boat_name",
+      "label": "Boat Name",
+      "type": "string",
+      "default": "",
+      "description": "Custom name for this boat (max 17 characters). Leave empty to use MAC address.",
+      "maxLength": 17,
+      "placeholder": "e.g. BOAT1, FRA999, etc."
+    }
+  ]
+}

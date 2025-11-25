@@ -1,6 +1,6 @@
 /**
  * @file main.cpp
- * @brief Programme principal pour OpenSailingRC-BoatGPS
+ * @brief Main program for OpenSailingRC-BoatGPS
  * @author OpenSailingRC Contributors
  * @date 2025
  * @version 1.0.3
@@ -22,21 +22,22 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  * 
  * @details
- * Tracker GPS pour voiliers RC avec diffusion ESP-NOW.
- * Transmet la position GPS, la vitesse et le cap à tous les appareils
- * à l'écoute (Display) et enregistre les données sur carte SD.
+ * GPS tracker for RC sailboats with ESP-NOW broadcast.
+ * Transmits GPS position, speed, and heading to all listening devices
+ * (Display) and records data to SD card.
  * 
- * Matériel supporté:
+ * Supported hardware:
  * - M5Stack AtomS3 Lite + GPS Atom v2 (AT6668)
  * - M5Stack Atom Lite + GPS Base (NEO-6M)
  * 
  * Communication: ESP-NOW broadcast (FF:FF:FF:FF:FF:FF)
- * Portée: 100-200m en ligne de vue
- * Fréquence d'émission: 1 Hz (configurable)
+ * Range: 100-200m line of sight
+ * Broadcast frequency: 1 Hz (configurable)
  */
 
 #include <M5Unified.h>
 #include <FastLED.h>
+#include <Preferences.h>
 #include "GPS.h"
 #include "Communication.h"
 #include "Logger.h"
@@ -117,10 +118,12 @@ void sendUBX(const uint8_t *msg, uint8_t len) {
 GPS gps(GPS_RX_PIN, GPS_TX_PIN);
 Communication comm;
 Storage storage;
+Preferences preferences;
 
 // ============================================================================
 // GLOBAL VARIABLES
 // ============================================================================
+String boatName = ""; // Boat name from preferences or MAC address
 uint32_t lastBroadcast = 0;
 uint32_t lastStatus = 0;
 uint32_t validPacketCount = 0;
@@ -131,17 +134,17 @@ uint32_t invalidPacketCount = 0;
 // ============================================================================
 
 /**
- * @brief Définit la couleur de la LED RGB de statut
- * @param color Couleur au format 0xRRGGBB
+ * @brief Set the status RGB LED color
+ * @param color Color in 0xRRGGBB format
  * 
  * @details
- * La LED RGB est située sur le bouton de l'AtomS3 Lite (GPIO35).
- * Codes couleur utilisés:
- * - Bleu (0x0000FF)   : Initialisation en cours
- * - Jaune (0xFFFF00)  : Attente du fix GPS
- * - Vert (0x00FF00)   : Données GPS valides, transmission OK
- * - Rouge (0xFF0000)  : Erreur critique
- * - Éteint (0x000000) : Inactif
+ * The RGB LED is located on the AtomS3 Lite button (GPIO35).
+ * Color codes used:
+ * - Blue (0x0000FF)   : Initialization in progress
+ * - Yellow (0xFFFF00) : Waiting for GPS fix
+ * - Green (0x00FF00)  : Valid GPS data, transmission OK
+ * - Red (0xFF0000)    : Critical error
+ * - Off (0x000000)    : Inactive
  */
 void setStatusLED(uint32_t color) {
     leds[0] = CRGB(color);
@@ -149,13 +152,13 @@ void setStatusLED(uint32_t color) {
 }
 
 /**
- * @brief Fait clignoter la LED RGB
- * @param color Couleur du clignotement (format 0xRRGGBB)
- * @param times Nombre de clignotements (défaut: 1)
+ * @brief Blink the RGB LED
+ * @param color Blink color (0xRRGGBB format)
+ * @param times Number of blinks (default: 1)
  * 
  * @details
- * Chaque clignotement dure 200ms (100ms allumé + 100ms éteint).
- * Utilisé principalement pour signaler les erreurs critiques.
+ * Each blink lasts 200ms (100ms on + 100ms off).
+ * Mainly used to signal critical errors.
  */
 void blinkLED(uint32_t color, int times = 1) {
     for (int i = 0; i < times; i++) {
@@ -171,20 +174,20 @@ void blinkLED(uint32_t color, int times = 1) {
 // ============================================================================
 
 /**
- * @brief Initialisation du système
+ * @brief System initialization
  * 
  * @details
- * Séquence d'initialisation:
- * 1. Serial (115200 baud) pour debugging
- * 2. M5Stack (configuration AtomS3 Lite)
- * 3. FastLED (LED RGB de statut)
- * 4. GPS (Serial2 sur GPIO5/6 ou GPIO22/19)
- * 5. ESP-NOW (communication broadcast)
- * 6. Logger (système de journalisation)
- * 7. Storage (carte SD si disponible)
+ * Initialization sequence:
+ * 1. Serial (115200 baud) for debugging
+ * 2. M5Stack (AtomS3 Lite configuration)
+ * 3. FastLED (status RGB LED)
+ * 4. GPS (Serial2 on GPIO5/6 or GPIO22/19)
+ * 5. ESP-NOW (broadcast communication)
+ * 6. Logger (logging system)
+ * 7. Storage (SD card if available)
  * 
- * En cas d'erreur critique (GPS ou ESP-NOW), le système
- * affiche une LED rouge clignotante et s'arrête.
+ * In case of critical error (GPS or ESP-NOW), the system
+ * displays a blinking red LED and stops.
  */
 void setup() {
     // Initialize serial first for debugging
@@ -247,6 +250,24 @@ void setup() {
     // Get MAC address
     uint8_t mac[6];
     comm.getLocalMAC(mac);
+    
+    // Load boat name from preferences (M5Burner)
+    preferences.begin("boatgps", true); // Read-only
+    boatName = preferences.getString("boat_name", "");
+    preferences.end();
+    
+    // If no custom name, use MAC address
+    if (boatName.length() == 0) {
+        char macStr[18];
+        snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        boatName = String(macStr);
+        Serial.println("  No custom boat name - using MAC address");
+    } else {
+        Serial.print("  Custom boat name: ");
+        Serial.println(boatName);
+    }
+    
     Serial.print("  Boat ID (MAC): ");
     for (int i = 0; i < 6; i++) {
         Serial.printf("%02X", mac[i]);
@@ -285,26 +306,26 @@ void setup() {
 // ============================================================================
 
 /**
- * @brief Boucle principale du programme
+ * @brief Main program loop
  * 
  * @details
- * Cycle de fonctionnement:
- * 1. Mise à jour M5Stack (gestion boutons)
- * 2. Mise à jour GPS (parsing NMEA continu)
- * 3. Vérification intervalle de broadcast (1 Hz par défaut)
- * 4. Si GPS valide:
- *    - Broadcast ESP-NOW avec retry (4 tentatives)
- *    - Log série avec numéro de séquence
- *    - Sauvegarde SD (si activée)
- *    - LED verte (transmission OK)
- * 5. Si GPS invalide:
- *    - LED jaune (attente fix)
- *    - Affichage statut (nombre de satellites, HDOP)
- * 6. Rapport de statut toutes les 5 secondes
+ * Operating cycle:
+ * 1. Update M5Stack (button handling)
+ * 2. Update GPS (continuous NMEA parsing)
+ * 3. Check broadcast interval (1 Hz by default)
+ * 4. If GPS valid:
+ *    - Broadcast ESP-NOW with retry (4 attempts)
+ *    - Serial log with sequence number
+ *    - SD save (if enabled)
+ *    - Green LED (transmission OK)
+ * 5. If GPS invalid:
+ *    - Yellow LED (waiting for fix)
+ *    - Status display (satellite count, HDOP)
+ * 6. Status report every 5 seconds
  * 
- * LED de statut:
- * - Vert  : Données valides, transmission OK
- * - Jaune : Attente fix GPS (< 4 satellites)
+ * Status LED:
+ * - Green  : Valid data, transmission OK
+ * - Yellow : Waiting for GPS fix (< 4 satellites)
  */
 void loop() {
     uint32_t currentTime = millis();
@@ -331,9 +352,9 @@ void loop() {
             uint8_t mac[6];
             comm.getLocalMAC(mac);
             
-            // Broadcast GPS data with 4 retries (5 total attempts)
+            // Broadcast GPS data with boat name and 4 retries (5 total attempts)
             // This improves reliability in case of packet loss
-            bool success = comm.broadcastGPSData(data, 4);
+            bool success = comm.broadcastGPSData(data, boatName, 4);
             
             if (success) {
                 validPacketCount++;
