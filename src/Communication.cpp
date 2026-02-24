@@ -3,7 +3,7 @@
  * @brief Implémentation de la communication ESP-NOW en mode broadcast
  * @author OpenSailingRC Contributors
  * @date 2025
- * @version 1.0.3
+ * @version 1.0.5
  * 
  * @copyright Copyright (c) 2025 OpenSailingRC
  * @license GNU General Public License v3.0
@@ -192,7 +192,7 @@ bool Communication::broadcastGPSData(const GPSData& data, const String& boatName
         } else {
             Serial.printf("✗ Broadcast attempt %d failed (error: %d)\n", attempt + 1, result);
             if (attempt < retries) {
-                delay(10);  // Small delay before retry (10ms)
+                delay(random(15, 50));  // Random delay before retry (15-50ms) to reduce collision probability
             }
         }
     }

@@ -5,7 +5,7 @@
  * 1. Modifier la variable BOAT_NAME ci-dessous
  * 2. Flasher ce programme sur l'AtomS3
  * 3. Ouvrir le Serial Monitor (115200 baud)
- * 4. Reflasher le firmware BoatGPS v1.0.4
+ * 4. Reflasher le firmware BoatGPS v1.0.5
  * 
  * Le nom sera conservé en mémoire NVS.
  */
@@ -15,7 +15,7 @@
 // ============================================
 // CONFIGURATION : Modifier le nom ici
 // ============================================
-const char* BOAT_NAME = "BOAT1";  // Max 17 caractères
+const char* BOAT_NAME = "FRA004";  // Max 17 caractères
 // ============================================
 
 Preferences preferences;

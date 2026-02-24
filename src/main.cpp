@@ -3,7 +3,7 @@
  * @brief Main program for OpenSailingRC-BoatGPS
  * @author OpenSailingRC Contributors
  * @date 2025
- * @version 1.0.3
+ * @version 1.0.5
  * 
  * @copyright Copyright (c) 2025 OpenSailingRC
  * @license GNU General Public License v3.0
@@ -60,8 +60,9 @@ const uint8_t GPS_TX_PIN = 19;             // GPIO19 for GPS TX
 const uint8_t LED_PIN = 27;                // RGB LED on GPIO27 (Atom Lite)
 #endif
 
-const uint32_t BROADCAST_INTERVAL = 1000;  // Broadcast every 1 second
-const uint32_t STATUS_INTERVAL = 5000;     // Status update every 5 seconds
+const uint32_t BROADCAST_INTERVAL_BASE = 1000;  // Base broadcast interval (1 second)
+const uint32_t BROADCAST_JITTER_MS = 100;       // ±100ms random jitter to avoid collisions between boats
+const uint32_t STATUS_INTERVAL = 5000;           // Status update every 5 seconds
 
 // SD Storage configuration based on build flags
 #ifdef DISABLE_SD_STORAGE
@@ -339,8 +340,9 @@ void loop() {
     // Get current GPS data
     GPSData data = gps.getData();
     
-    // Check if it's time to broadcast
-    if (currentTime - lastBroadcast >= BROADCAST_INTERVAL) {
+    // Check if it's time to broadcast (with random jitter to avoid collisions)
+    uint32_t jitter = random(0, BROADCAST_JITTER_MS * 2);  // 0-200ms random offset
+    if (currentTime - lastBroadcast >= (BROADCAST_INTERVAL_BASE - BROADCAST_JITTER_MS + jitter)) {
         lastBroadcast = currentTime;
         
         // Only broadcast if GPS data is valid
@@ -352,9 +354,9 @@ void loop() {
             uint8_t mac[6];
             comm.getLocalMAC(mac);
             
-            // Broadcast GPS data with boat name and 4 retries (5 total attempts)
-            // This improves reliability in case of packet loss
-            bool success = comm.broadcastGPSData(data, boatName, 4);
+            // Broadcast GPS data with boat name and 1 retry (2 total attempts)
+            // Reduced from 4 retries to minimize channel congestion with multiple boats
+            bool success = comm.broadcastGPSData(data, boatName, 1);
             
             if (success) {
                 validPacketCount++;

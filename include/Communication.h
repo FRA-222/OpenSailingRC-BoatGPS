@@ -3,7 +3,7 @@
  * @brief Communication ESP-NOW en mode broadcast pour données GPS
  * @author OpenSailingRC Contributors
  * @date 2025
- * @version 1.0.3
+ * @version 1.0.5
  * 
  * @copyright Copyright (c) 2025 OpenSailingRC
  * @license GNU General Public License v3.0

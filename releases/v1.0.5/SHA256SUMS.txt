@@ -1,0 +1,2 @@
+c732aa498d9bf3c07470d11fef26d9fd36d213284d104f05d6cbfe44e3bd3a0f  OpenSailingRC_BoatGPS_v1.0.5_AtomLite_MERGED.bin
+5305846a44d2754ede1378851f59f8ff08c19b8d2e4678be67cfeb1f0a378cdd  OpenSailingRC_BoatGPS_v1.0.5_AtomS3_MERGED.bin
