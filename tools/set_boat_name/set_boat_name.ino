@@ -15,7 +15,7 @@
 // ============================================
 // CONFIGURATION : Modifier le nom ici
 // ============================================
-const char* BOAT_NAME = "FRA004";  // Max 17 caractères
+const char* BOAT_NAME = "FRA222";  // Max 17 caractères
 // ============================================
 
 Preferences preferences;
