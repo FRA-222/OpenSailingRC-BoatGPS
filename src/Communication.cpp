@@ -156,6 +156,7 @@ bool Communication::broadcastGPSData(const GPSData& data, const String& boatName
     packet.speed = data.speed;
     packet.heading = data.course;
     packet.satellites = data.satellites;
+    packet.ttl = 1; // Original packet, can be relayed once by Hub
     
     // Broadcast address
     uint8_t broadcastAddr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};

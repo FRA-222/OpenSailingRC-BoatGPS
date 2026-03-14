@@ -54,6 +54,7 @@ struct GPSBroadcastPacket {
     float speed;             ///< Speed in knots
     float heading;           ///< Heading in degrees (0=N, 90=E, 180=S, 270=W)
     uint8_t satellites;      ///< Number of visible satellites
+    uint8_t ttl;             ///< Time-To-Live: 1=original, 0=already relayed by Hub
 };
 
 
