@@ -71,6 +71,20 @@ bool Communication::begin() {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     
+    // Enable ESP-NOW Long Range mode ONLY for extended range
+    // LR-only on the sender ensures broadcasts use LR modulation
+    // The receiver (Display) keeps mixed protocols to also receive normal devices
+    esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR);
+    
+    // Verify Long Range mode is active
+    uint8_t protocol = 0;
+    esp_wifi_get_protocol(WIFI_IF_STA, &protocol);
+    Serial.printf("✓ WiFi protocols: %s%s%s%s\n",
+        (protocol & WIFI_PROTOCOL_11B) ? "11b " : "",
+        (protocol & WIFI_PROTOCOL_11G) ? "11g " : "",
+        (protocol & WIFI_PROTOCOL_11N) ? "11n " : "",
+        (protocol & WIFI_PROTOCOL_LR) ? "LR" : "NO-LR");
+    
     // Set maximum TX power for best range (84 = 21 dBm = maximum power)
     esp_wifi_set_max_tx_power(84);
     
