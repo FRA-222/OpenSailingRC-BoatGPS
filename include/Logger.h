@@ -3,7 +3,7 @@
  * @brief Journalisation des messages applicatifs
  * @author OpenSailingRC Contributors
  * @date 2025
- * @version 1.0.5
+ * @version 1.0.6
  * 
  * @copyright Copyright (c) 2025 OpenSailingRC
  * @license GNU General Public License v3.0
