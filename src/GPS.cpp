@@ -70,6 +70,8 @@ GPS::GPS(uint8_t rxPin, uint8_t txPin)
 bool GPS::begin() {
     // Initialize Serial2 for GPS communication
     gpsSerial = &Serial2;
+    // 2048-byte buffer absorbs a full second of NMEA data during light sleep
+    gpsSerial->setRxBufferSize(2048);
     gpsSerial->begin(GPS_BAUD, SERIAL_8N1, rxPin, txPin);
     
     Serial.println("✓ GPS: Initialized");

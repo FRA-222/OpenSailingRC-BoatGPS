@@ -38,6 +38,7 @@
 #include <M5Unified.h>
 #include <FastLED.h>
 #include <Preferences.h>
+#include <esp_sleep.h>
 #include "GPS.h"
 #include "Communication.h"
 #include "Logger.h"
@@ -191,6 +192,9 @@ void blinkLED(uint32_t color, int times = 1) {
  * displays a blinking red LED and stops.
  */
 void setup() {
+    // Reduce CPU frequency for lower power consumption (GPS/ESP-NOW doesn't need 240 MHz)
+    setCpuFrequencyMhz(80);
+
     // Initialize serial first for debugging
     Serial.begin(115200);
     
@@ -349,36 +353,36 @@ void loop() {
         if (gps.isValid()) {
             // Green LED: Valid data
             setStatusLED(0x00FF00);
-            
+
             // Get MAC address
             uint8_t mac[6];
             comm.getLocalMAC(mac);
-            
+
             // Broadcast GPS data with boat name and 1 retry (2 total attempts)
             // Reduced from 4 retries to minimize channel congestion with multiple boats
             bool success = comm.broadcastGPSData(data, boatName, 1);
-            
+
             if (success) {
                 validPacketCount++;
-                
+
                 // Get sequence number after broadcast
                 uint32_t seqNum = comm.getSequenceNumber();
-                
+
                 // Log to serial with sequence number
                 Serial.printf("[SEQ #%lu] ", seqNum);
                 Logger::logGPSData(data, mac);
-                
+
                 // Save to SD card with sequence number (if enabled)
                 if (ENABLE_SD_STORAGE) {
                     storage.writeGPSData(data, mac, seqNum);
                 }
             }
-            
+
         } else {
             // Yellow LED: Waiting for valid fix
             setStatusLED(0xFFFF00);
             invalidPacketCount++;
-            
+
             Serial.printf("⏳ Waiting for GPS fix... (sats: %d, HDOP: %.1f)\n",
                          gps.getSatellites(),
                          gps.getHDOP());
@@ -414,6 +418,22 @@ void loop() {
         Serial.println();
     }
     
-    // Small delay to prevent overwhelming the system
-    delay(10);
+    // Power-saving wait until 200ms before next possible broadcast
+    {
+        uint32_t sleepUntil = lastBroadcast + BROADCAST_INTERVAL_BASE - BROADCAST_JITTER_MS - 200;
+        uint32_t now = millis();
+        if (sleepUntil > now + 10) {
+            uint32_t waitMs = sleepUntil - now;
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+            // AtomS3: USB CDC is suspended by light sleep → use delay() instead
+            // CPU 80 MHz + LED flash still save ~25 mA
+            delay(waitMs);
+#else
+            // Atom Lite: hardware UART, light sleep is safe (~40-50 mA additional savings)
+            Serial.flush();
+            esp_sleep_enable_timer_wakeup((uint64_t)waitMs * 1000ULL);
+            esp_light_sleep_start();
+#endif
+        }
+    }
 }
