@@ -3,7 +3,7 @@
  * @brief Main program for OpenSailingRC-BoatGPS
  * @author OpenSailingRC Contributors
  * @date 2025
- * @version 1.0.6
+ * @version 1.0.7
  * 
  * @copyright Copyright (c) 2025 OpenSailingRC
  * @license GNU General Public License v3.0
